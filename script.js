@@ -16,6 +16,7 @@ const CONFIG = {
 // --- TRẠNG THÁI ---
 const STATE = {
   mode: "TREE",
+  isPinching: false,
   hand: {
     detected: false,
     screenX: 0,
@@ -303,7 +304,7 @@ function createDecorations() {
   lCtx.textAlign = "center";
   lCtx.shadowColor = "#FF1493";
   lCtx.shadowBlur = 40;
-  lCtx.fillText("I LOVE YOU ❤️", 512, 130);
+  lCtx.fillText("I LOVE YOU", 512, 130);
   const loveTex = new THREE.CanvasTexture(loveCanvas);
   loveMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(70, 18),
@@ -324,15 +325,26 @@ async function loadServerImages() {
     const images = await response.json();
     const loader = new THREE.TextureLoader();
 
-    const frameGeo = new THREE.PlaneGeometry(10, 10);
-    const borderGeo = new THREE.PlaneGeometry(11, 11);
     const borderMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
 
     for (let url of images) {
       const tex = await loader.loadAsync(url);
       // Đánh dấu texture này là sRGB để nó không bị render nhợt nhạt
       tex.colorSpace = THREE.SRGBColorSpace;
-      //
+      
+      // Tính toán tỷ lệ ảnh
+      const aspect = tex.image.width / tex.image.height;
+      let w = 10;
+      let h = 10;
+      if (aspect > 1) {
+        h = 10 / aspect;
+      } else {
+        w = 10 * aspect;
+      }
+      
+      const frameGeo = new THREE.PlaneGeometry(w, h);
+      const borderGeo = new THREE.PlaneGeometry(w + 1, h + 1);
+
       const mat = new THREE.MeshBasicMaterial({
         map: tex,
         side: THREE.DoubleSide,
@@ -406,10 +418,10 @@ async function predictWebcam() {
 function processGestures(result) {
   if (!result.landmarks || result.landmarks.length === 0) {
     STATE.hand.detected = false;
+    STATE.isPinching = false;
+    STATE.selectedIndex = -1;
     if (cursorElement) cursorElement.style.display = "none";
-    if (STATE.mode !== "PHOTO" && STATE.mode !== "HEART") {
-      STATE.mode = "TREE";
-    }
+    STATE.mode = "TREE";
     return;
   }
 
@@ -453,9 +465,17 @@ function processGestures(result) {
   );
   avgDistToWrist /= 4;
 
-  const isPinching = pinchDist < 0.05;
-  const isFist = avgDistToWrist < 0.25;
-  const isOpen = avgDistToWrist > 0.3;
+  let isPinching = false;
+  if (STATE.isPinching) {
+    isPinching = pinchDist < 0.08; // Hysteresis: allow slightly looser pinch if already pinching
+  } else {
+    isPinching = pinchDist < 0.04; // Require tight pinch to start
+  }
+
+  const isFist = avgDistToWrist < 0.25 && !isPinching;
+  const isOpen = avgDistToWrist > 0.3 && !isPinching;
+
+  STATE.isPinching = isPinching;
 
   if (isFist) {
     if (STATE.selectedIndex !== -1) {
@@ -558,8 +578,7 @@ function animate() {
     if (starMesh) starMesh.visible = false;
     if (loveMesh) {
       loveMesh.visible = true;
-      const s = 1 + Math.abs(Math.sin(time * 3)) * 0.1;
-      loveMesh.scale.set(s, s, 1);
+      loveMesh.scale.set(1, 1, 1);
     }
     photoMeshes.forEach((m) => (m.visible = false));
 
@@ -569,6 +588,9 @@ function animate() {
       mainGroup.rotation.x = 0;
       mainGroup.rotation.y = 0;
       mainGroup.rotation.z = 0;
+      
+      const s = 1 + Math.abs(Math.sin(time * 3)) * 0.1;
+      mainGroup.scale.set(s, s, s);
     }
     STATE.targetRotation.x = 0;
     STATE.targetRotation.y = 0;
@@ -603,7 +625,10 @@ function animate() {
 
           const x = Math.sin(angle) * r;
           const z = Math.cos(angle) * r;
-          const y = original.y + Math.sin(time + i) * 2;
+          
+          // Khi chụm tay, dừng hoàn toàn hiệu ứng nhấp nhô để ảnh đứng yên tuyệt đối
+          const bobbing = STATE.isPinching ? 0 : Math.sin(time + i) * 2;
+          const y = original.y + bobbing;
 
           mesh.position.lerp(new THREE.Vector3(x, y, z), 0.1);
           mesh.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
@@ -616,12 +641,15 @@ function animate() {
 
   // XOAY GROUP CHÍNH (CÂY) - Chỉ xoay khi không phải là HEART
   if (STATE.mode !== "HEART") {
-    STATE.rotation.x += (STATE.targetRotation.x - STATE.rotation.x) * 5 * dt;
-    STATE.rotation.y += (STATE.targetRotation.y - STATE.rotation.y) * 5 * dt;
+    if (!STATE.isPinching) {
+      STATE.rotation.x += (STATE.targetRotation.x - STATE.rotation.x) * 5 * dt;
+      STATE.rotation.y += (STATE.targetRotation.y - STATE.rotation.y) * 5 * dt;
+    }
 
     if (mainGroup) {
       mainGroup.rotation.y = STATE.rotation.y;
       mainGroup.rotation.x = STATE.rotation.x;
+      mainGroup.scale.set(1, 1, 1);
     }
   }
 
