@@ -377,28 +377,42 @@ async function loadServerImages() {
 
 // --- MEDIA PIPE ---
 async function initMediaPipe() {
-  video = document.getElementById("webcam");
-  webcamCanvas = document.getElementById("webcam-preview");
-  webcamCtx = webcamCanvas.getContext("2d");
-  webcamCanvas.width = 160;
-  webcamCanvas.height = 120;
+  try {
+    video = document.getElementById("webcam");
+    webcamCanvas = document.getElementById("webcam-preview");
+    webcamCtx = webcamCanvas.getContext("2d");
+    webcamCanvas.width = 160;
+    webcamCanvas.height = 120;
 
-  const vision = await FilesetResolver.forVisionTasks(
-    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
-  );
-  handLandmarker = await HandLandmarker.createFromOptions(vision, {
-    baseOptions: {
-      modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
-      delegate: "GPU",
-    },
-    runningMode: "VIDEO",
-    numHands: 2,
-  });
+    const vision = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+    );
+    handLandmarker = await HandLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+        delegate: "GPU",
+      },
+      runningMode: "VIDEO",
+      numHands: 2,
+    });
 
-  if (navigator.mediaDevices?.getUserMedia) {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    video.srcObject = stream;
-    video.addEventListener("loadeddata", predictWebcam);
+    if (navigator.mediaDevices?.getUserMedia) {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      video.addEventListener("loadeddata", predictWebcam);
+    }
+  } catch (error) {
+    console.warn("Không thể truy cập camera. Chuyển sang chế độ dùng chuột.", error);
+    
+    // Ẩn khung cam
+    const webcamWrapper = document.getElementById("webcam-wrapper");
+    if (webcamWrapper) webcamWrapper.style.display = "none";
+
+    // Đổi hướng dẫn sang chuột
+    const instructionText = document.getElementById("instruction-text");
+    if (instructionText) {
+      instructionText.innerHTML = "🖱️ <b>Di chuột:</b> Xoay quanh &nbsp;|&nbsp; 🖱️ <b>Click:</b> Xem ảnh / Trở về &nbsp;|&nbsp; 🖱️🖱️ <b>Nhấp đúp:</b> Trái tim";
+    }
   }
 }
 
@@ -663,3 +677,51 @@ function animate() {
 }
 
 init();
+
+// --- XỬ LÝ CHUỘT KHI KHÔNG DÙNG CAMERA ---
+const mouse = new THREE.Vector2();
+
+window.addEventListener("mousemove", (event) => {
+  if (!STATE.hand.detected) {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    
+    if (STATE.mode === "EXPLODE") {
+      STATE.targetRotation.y = mouse.x * 2.5;
+      STATE.targetRotation.x = -mouse.y * 0.5;
+    }
+
+    STATE.hand.screenX = event.clientX;
+    STATE.hand.screenY = event.clientY;
+  }
+});
+
+window.addEventListener("mousedown", (event) => {
+  if (!STATE.hand.detected) {
+    const audio = document.getElementById("bg-music");
+    if (audio && audio.paused) audio.play().catch(() => {});
+
+    if (STATE.mode === "TREE") {
+      STATE.mode = "EXPLODE";
+    } else if (STATE.mode === "EXPLODE") {
+      findClosestPhoto();
+      if (STATE.selectedIndex !== -1) {
+        STATE.mode = "PHOTO";
+      } else {
+        STATE.mode = "TREE";
+      }
+    } else if (STATE.mode === "PHOTO" || STATE.mode === "HEART") {
+      STATE.mode = "EXPLODE";
+    }
+  }
+});
+
+window.addEventListener("dblclick", (event) => {
+  if (!STATE.hand.detected) {
+    if (STATE.mode !== "HEART") {
+      STATE.mode = "HEART";
+    } else {
+      STATE.mode = "TREE";
+    }
+  }
+});

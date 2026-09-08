@@ -1,7 +1,6 @@
-**README.md**
-
-````markdown
 # 🎄 Noel Magic Music - Interactive 3D Christmas Tree
+
+![Demo Giao Diện](Demo.jpeg)
 
 Dự án web tương tác 3D chủ đề Giáng Sinh, sử dụng công nghệ nhận diện cử chỉ tay (AI Hand Tracking) để điều khiển cây thông. Tích hợp trang Admin để quản lý ảnh kỷ niệm dễ dàng.
 
@@ -26,7 +25,6 @@ NOEL/
 ├── upload_handler.php      # Xử lý logic upload ảnh từ Admin
 └── README.md               # Hướng dẫn sử dụng
 ```
-````
 
 ## ✨ Tính năng
 

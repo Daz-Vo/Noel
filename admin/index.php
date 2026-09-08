@@ -107,6 +107,7 @@ $musics = glob($musicDir . "*.{mp3,wav,ogg}", GLOB_BRACE);
             display: flex; 
             gap: 40px;
             overflow: hidden;
+            min-height: 0;
         }
 
         .left-panel {
@@ -116,6 +117,7 @@ $musics = glob($musicDir . "*.{mp3,wav,ogg}", GLOB_BRACE);
             flex-direction: column;
             overflow-y: auto;
             padding-right: 15px;
+            height: 100%;
         }
         
         .right-panel {
@@ -124,6 +126,7 @@ $musics = glob($musicDir . "*.{mp3,wav,ogg}", GLOB_BRACE);
             flex-direction: column;
             overflow-y: auto;
             padding-right: 15px;
+            height: 100%;
         }
         
         .alert { 
