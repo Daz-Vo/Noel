@@ -47,6 +47,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload'])) {
     $successCount = 0;
     $errors = [];
 
+    // --- KIỂM TRA SỐ LƯỢNG ẢNH TRƯỚC KHI TẢI LÊN ---
+    $currentCount = 0;
+    $maxAllowed = 20;
+    if ($type === 'image') {
+        $currentImages = glob($imageDir . '*.{jpg,jpeg,png,gif,webp,JPG,JPEG,PNG}', GLOB_BRACE);
+        if ($currentImages !== false) {
+            $currentCount = count($currentImages);
+        }
+    }
+
     // 4. VÒNG LẶP XỬ LÝ TỪNG FILE
     for ($i = 0; $i < $totalFiles; $i++) {
         $fileName = $_FILES['files']['name'][$i];
@@ -65,6 +75,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload'])) {
         if (!in_array($fileExt, $allowedTypes)) {
             $errors[] = "$fileName (Sai định dạng)";
             continue;
+        }
+
+        // Giới hạn dung lượng tối đa 10MB (10 * 1024 * 1024 bytes)
+        if ($fileSize > 10 * 1024 * 1024) {
+            $errors[] = "$fileName (Dung lượng vượt quá 10MB)";
+            continue;
+        }
+
+        // Giới hạn tổng cộng tối đa 20 ảnh
+        if ($type === 'image') {
+            if ($currentCount + $successCount >= $maxAllowed) {
+                $errors[] = "$fileName (Đã vượt quá giới hạn $maxAllowed ảnh)";
+                continue;
+            }
         }
 
         // Đổi tên file để tránh trùng lặp

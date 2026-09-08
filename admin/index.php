@@ -7,56 +7,12 @@ $musicDir = '../music/';
 if (!is_dir($imageDir)) mkdir($imageDir, 0777, true);
 if (!is_dir($musicDir)) mkdir($musicDir, 0777, true);
 
-// --- XỬ LÝ UPLOAD (ĐÃ NÂNG CẤP ĐỂ HỖ TRỢ NHIỀU FILE) ---
+// --- HIỂN THỊ THÔNG BÁO TỪ UPLOAD HANDLER ---
 $message = "";
-
-if (isset($_POST['upload'])) {
-    $type = $_POST['type'];
-    $targetDir = ($type === 'image') ? $imageDir : $musicDir;
-    
-    // Các đuôi file cho phép
-    $allowImages = ['jpg', 'png', 'jpeg', 'gif', 'webp'];
-    $allowMusic = ['mp3', 'wav', 'ogg'];
-    $allowedExts = ($type === 'image') ? $allowImages : $allowMusic;
-
-    // Đếm số file được gửi lên
-    $totalFiles = count($_FILES['files']['name']);
-    $successCount = 0;
-    $errorCount = 0;
-
-    // Vòng lặp xử lý từng file
-    for ($i = 0; $i < $totalFiles; $i++) {
-        $fileName = $_FILES['files']['name'][$i];
-        $fileTmp = $_FILES['files']['tmp_name'][$i];
-        $fileError = $_FILES['files']['error'][$i];
-        
-        if ($fileError === UPLOAD_ERR_OK) {
-            $fileType = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-
-            // Kiểm tra định dạng
-            if (in_array($fileType, $allowedExts)) {
-                // Tạo tên file mới để tránh trùng: tên_cũ + timestamp + random
-                $newFileName = pathinfo($fileName, PATHINFO_FILENAME) . '_' . time() . rand(10,99) . '.' . $fileType;
-                $targetFilePath = $targetDir . $newFileName;
-
-                if (move_uploaded_file($fileTmp, $targetFilePath)) {
-                    $successCount++;
-                } else {
-                    $errorCount++;
-                }
-            } else {
-                $errorCount++; // Sai định dạng
-            }
-        }
-    }
-
-    // Hiển thị thông báo tổng kết
-    if ($successCount > 0) {
-        $message .= "<div class='alert success'><i>✓</i> Đã tải lên thành công <strong>$successCount</strong> file!</div>";
-    }
-    if ($errorCount > 0) {
-        $message .= "<div class='alert error'><i>✗</i> Có <strong>$errorCount</strong> file bị lỗi hoặc sai định dạng.</div>";
-    }
+if (isset($_GET['msg']) && isset($_GET['type'])) {
+    $msgClass = ($_GET['type'] === 'success') ? 'success' : 'error';
+    $icon = ($_GET['type'] === 'success') ? '✓' : '✗';
+    $message = "<div class='alert $msgClass'><i>$icon</i> " . htmlspecialchars($_GET['msg']) . "</div>";
 }
 
 // --- XỬ LÝ XÓA ---
